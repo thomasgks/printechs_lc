@@ -1,0 +1,110 @@
+{
+ "actions": [],
+ "creation": "2026-04-19 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "shipment_date",
+  "bill_of_lading",
+  "vessel",
+  "column_break_1",
+  "port_of_loading",
+  "port_of_discharge",
+  "eta",
+  "section_break_2",
+  "shipped_amount",
+  "received_amount",
+  "purchase_receipt",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "shipment_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Shipment Date",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "bill_of_lading",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Bill of Lading",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "vessel",
+   "fieldtype": "Data",
+   "label": "Vessel / Flight",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "port_of_loading",
+   "fieldtype": "Data",
+   "label": "Port of Loading",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "port_of_discharge",
+   "fieldtype": "Data",
+   "label": "Port of Discharge",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "eta",
+   "fieldtype": "Date",
+   "label": "ETA",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "shipped_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Shipped Amount",
+   "options": "currency",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "received_amount",
+   "fieldtype": "Currency",
+   "label": "Received Amount",
+   "options": "currency",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "purchase_receipt",
+   "fieldtype": "Link",
+   "label": "Purchase Receipt",
+   "options": "Purchase Receipt",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks",
+   "allow_on_submit": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-19 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Printechs LC",
+ "name": "LC Shipment",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

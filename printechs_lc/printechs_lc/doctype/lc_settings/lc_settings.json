@@ -1,0 +1,93 @@
+{
+ "actions": [],
+ "creation": "2026-04-19 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_email_alerts",
+  "expiry_alert_days",
+  "enable_maturity_alerts",
+  "column_break_1",
+  "allow_over_utilization",
+  "over_utilization_percent",
+  "section_break_defaults",
+  "company_lc_defaults"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "fieldname": "enable_email_alerts",
+   "fieldtype": "Check",
+   "label": "Enable Email Alerts"
+  },
+  {
+   "default": "7",
+   "fieldname": "expiry_alert_days",
+   "fieldtype": "Int",
+   "label": "Expiry Alert Days Before"
+  },
+  {
+   "default": "1",
+   "fieldname": "enable_maturity_alerts",
+   "fieldtype": "Check",
+   "label": "Enable Usance Maturity Alerts"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "allow_over_utilization",
+   "fieldtype": "Check",
+   "label": "Allow Over Utilization"
+  },
+  {
+   "depends_on": "eval:doc.allow_over_utilization",
+   "fieldname": "over_utilization_percent",
+   "fieldtype": "Percent",
+   "label": "Over Utilization Tolerance %"
+  },
+  {
+   "fieldname": "section_break_defaults",
+   "fieldtype": "Section Break",
+   "label": "Company Defaults"
+  },
+  {
+   "fieldname": "company_lc_defaults",
+   "fieldtype": "Table",
+   "label": "Company LC Defaults",
+   "options": "LC Company Default"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-04-19 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Printechs LC",
+ "name": "LC Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
