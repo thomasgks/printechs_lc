@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import flt, getdate
 
 
 def execute(filters=None):
@@ -100,11 +100,12 @@ def get_data(filters):
 	if filters.get("letter_of_credit"):
 		rows.extend(_get_voucher_link_rows(filters))
 
-	rows.sort(key=lambda r: (r.posting_date or "", r.voucher_no or ""))
+	rows = deduplicate_rows(rows)
+	rows.sort(key=lambda row: (get_value(row, "posting_date") or "", get_value(row, "voucher_no") or ""))
 
 	balance = 0
 	for row in rows:
-		balance += flt(row.debit) - flt(row.credit)
+		balance += flt(get_value(row, "debit")) - flt(get_value(row, "credit"))
 		row["balance"] = balance
 
 	return rows
@@ -116,12 +117,48 @@ def account_company_filter(filters):
 	return " AND company = %(company)s"
 
 
+def get_value(row, fieldname):
+	if isinstance(row, dict):
+		return row.get(fieldname)
+	return row.get(fieldname)
+
+
+def deduplicate_rows(rows):
+	unique_rows = []
+	seen = set()
+	for row in rows:
+		key = (
+			get_value(row, "posting_date"),
+			get_value(row, "voucher_type"),
+			get_value(row, "voucher_no"),
+			get_value(row, "transaction_type"),
+			get_value(row, "account"),
+			flt(get_value(row, "debit")),
+			flt(get_value(row, "credit")),
+		)
+		if key in seen:
+			continue
+		seen.add(key)
+		unique_rows.append(row)
+	return unique_rows
+
+
 def _get_voucher_link_rows(filters):
 	lc = frappe.get_doc("Letter of Credit", filters["letter_of_credit"])
+	if filters.get("company") and lc.company != filters["company"]:
+		return []
+	if filters.get("supplier") and lc.supplier != filters["supplier"]:
+		return []
+
 	rows = []
 	for link in lc.voucher_links or []:
 		if filters.get("account") and link.account != filters["account"]:
 			continue
+		if filters.get("from_date") and getdate(link.posting_date) < getdate(filters["from_date"]):
+			continue
+		if filters.get("to_date") and getdate(link.posting_date) > getdate(filters["to_date"]):
+			continue
+
 		rows.append(
 			{
 				"posting_date": link.posting_date,

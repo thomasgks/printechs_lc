@@ -127,8 +127,13 @@ def post_bank_charges(lc_name, charge_row_idx=None, amount=None):
 	)
 
 	if charge_row_idx is not None:
-		lc.charges[int(charge_row_idx) - 1].journal_entry = je_name
-		lc.save(ignore_permissions=True)
+		frappe.db.set_value(
+			"LC Charge",
+			row.name,
+			"journal_entry",
+			je_name,
+			update_modified=False,
+		)
 
 	return je_name
 

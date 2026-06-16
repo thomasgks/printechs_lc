@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from erpnext.setup.utils import get_exchange_rate
 from frappe.model.document import Document
 from frappe.utils import add_days, flt, getdate, today
 
@@ -17,17 +18,19 @@ from printechs_lc.utils.utilization import get_lc_limit
 class LetterofCredit(Document):
 	def validate(self):
 		self.set_defaults_from_company()
+		self.set_exchange_rate()
 		self.set_margin_amount()
 		self.set_bank_payment_confirmation_date()
 		self.set_charge_base_amounts()
 		self.update_utilization()
+		self.set_base_amounts()
 		self.validate_utilization_limit()
 		self.validate_lc_type()
 		self.validate_dates()
 		self.validate_close()
 
 	def set_defaults_from_company(self):
-		if self.lc_margin_account and self.lc_liability_account:
+		if self.lc_margin_account and self.lc_liability_account and self.bank_charges_account and self.bank_account:
 			return
 
 		defaults = get_company_defaults(self.company)
@@ -38,6 +41,27 @@ class LetterofCredit(Document):
 		self.lc_liability_account = self.lc_liability_account or defaults.lc_liability_account
 		self.bank_charges_account = self.bank_charges_account or defaults.bank_charges_account
 		self.bank_account = self.bank_account or defaults.default_bank_account
+
+	def set_exchange_rate(self):
+		if not (self.company and self.currency):
+			return
+
+		company_currency = frappe.get_cached_value("Company", self.company, "default_currency")
+		if self.currency == company_currency:
+			self.exchange_rate = 1
+			return
+
+		if flt(self.exchange_rate) and flt(self.exchange_rate) != 1:
+			return
+
+		exchange_rate = get_exchange_rate(
+			self.currency,
+			company_currency,
+			self.opening_date or today(),
+			"for_buying",
+		)
+		if exchange_rate:
+			self.exchange_rate = exchange_rate
 
 	def set_margin_amount(self):
 		if not self.margin_amount and self.margin_percent and self.lc_amount:
@@ -80,6 +104,12 @@ class LetterofCredit(Document):
 
 		self.utilized_amount = utilized
 		self.available_amount = flt(self.lc_amount) - utilized
+
+	def set_base_amounts(self):
+		exchange_rate = flt(self.exchange_rate) or 1
+		self.base_lc_amount = flt(self.lc_amount) * exchange_rate
+		self.base_utilized_amount = flt(self.utilized_amount) * exchange_rate
+		self.base_available_amount = flt(self.available_amount) * exchange_rate
 
 	def validate_utilization_limit(self):
 		limit = get_lc_limit(self)

@@ -19,6 +19,16 @@ frappe.ui.form.on("Letter of Credit", {
 				frm.set_value("currency", r.default_currency);
 			});
 		}
+		set_lc_company_defaults(frm);
+		set_lc_exchange_rate(frm);
+	},
+
+	currency(frm) {
+		set_lc_exchange_rate(frm, true);
+	},
+
+	opening_date(frm) {
+		set_lc_exchange_rate(frm);
 	},
 
 	purchase_order(frm) {
@@ -31,16 +41,17 @@ frappe.ui.form.on("Letter of Credit", {
 				$.each(r.message, (field, value) => {
 					if (value) frm.set_value(field, value);
 				});
+				set_lc_company_defaults(frm);
 			},
 		});
 	},
 
 	validate(frm) {
+		update_lc_amounts(frm);
 		update_all_charge_base_amounts(frm);
 	},
 
 	refresh(frm) {
-		update_all_charge_base_amounts(frm);
 		if (frm.is_new()) return;
 		add_accounting_buttons(frm);
 		frm.add_custom_button(__("L/C Ledger"), () => {
@@ -49,6 +60,23 @@ frappe.ui.form.on("Letter of Credit", {
 				company: frm.doc.company,
 			});
 		}, __("View"));
+	},
+
+	exchange_rate(frm) {
+		update_lc_amounts(frm);
+		update_charge_exchange_rates(frm);
+	},
+
+	lc_amount(frm) {
+		update_lc_amounts(frm);
+	},
+
+	utilized_amount(frm) {
+		update_lc_amounts(frm);
+	},
+
+	margin_percent(frm) {
+		update_lc_amounts(frm);
 	},
 });
 
@@ -60,6 +88,10 @@ frappe.ui.form.on("LC Charge", {
 	exchange_rate(frm, cdt, cdn) {
 		update_charge_base_amount(frm, cdt, cdn);
 	},
+
+	charge_currency(frm, cdt, cdn) {
+		set_charge_exchange_rate(frm, cdt, cdn);
+	},
 });
 
 function account_filter(company, account_type) {
@@ -70,6 +102,130 @@ function account_filter(company, account_type) {
 			account_type: account_type || undefined,
 		},
 	};
+}
+
+function set_lc_company_defaults(frm) {
+	if (!frm.doc.company) return;
+
+	frappe.db.get_doc("LC Settings", "LC Settings").then((settings) => {
+		const defaults = (settings.company_lc_defaults || []).find(
+			(row) => row.company === frm.doc.company
+		);
+		if (!defaults) return;
+
+		const values = {
+			bank_account: defaults.default_bank_account,
+			lc_margin_account: defaults.lc_margin_account,
+			lc_liability_account: defaults.lc_liability_account,
+			bank_charges_account: defaults.bank_charges_account,
+		};
+
+		Object.keys(values).forEach((fieldname) => {
+			if (!frm.doc[fieldname] && values[fieldname]) {
+				frm.set_value(fieldname, values[fieldname]);
+			}
+		});
+	});
+}
+
+function set_lc_exchange_rate(frm, force = false) {
+	if (!frm.doc.company || !frm.doc.currency) return;
+
+	frappe.db.get_value("Company", frm.doc.company, "default_currency").then((r) => {
+		const company_currency = r.message && r.message.default_currency;
+		if (!company_currency) return;
+
+		if (frm.doc.currency === company_currency) {
+			frm.set_value("exchange_rate", 1);
+			return;
+		}
+
+		if (!force && flt(frm.doc.exchange_rate) && flt(frm.doc.exchange_rate) !== 1) return;
+
+		frappe.call({
+			method: "erpnext.setup.utils.get_exchange_rate",
+			args: {
+				from_currency: frm.doc.currency,
+				to_currency: company_currency,
+				transaction_date: frm.doc.opening_date || frappe.datetime.get_today(),
+				args: "for_buying",
+			},
+			callback(r) {
+				if (r.message) {
+					frm.set_value("exchange_rate", r.message);
+				}
+			},
+		});
+	});
+}
+
+function update_lc_amounts(frm) {
+	if (flt(frm.doc.margin_percent) && flt(frm.doc.lc_amount)) {
+		const margin_amount = (flt(frm.doc.lc_amount) * flt(frm.doc.margin_percent)) / 100;
+		if (flt(frm.doc.margin_amount) !== margin_amount) {
+			frm.set_value("margin_amount", margin_amount);
+		}
+	}
+
+	const available_amount = flt(frm.doc.lc_amount) - flt(frm.doc.utilized_amount);
+	if (flt(frm.doc.available_amount) !== available_amount) {
+		frm.set_value("available_amount", available_amount);
+	}
+
+	const exchange_rate = flt(frm.doc.exchange_rate || 1);
+	const base_values = {
+		base_lc_amount: flt(frm.doc.lc_amount) * exchange_rate,
+		base_utilized_amount: flt(frm.doc.utilized_amount) * exchange_rate,
+		base_available_amount: available_amount * exchange_rate,
+	};
+	Object.keys(base_values).forEach((fieldname) => {
+		if (flt(frm.doc[fieldname]) !== base_values[fieldname]) {
+			frm.set_value(fieldname, base_values[fieldname]);
+		}
+	});
+}
+
+function update_charge_exchange_rates(frm) {
+	(frm.doc.charges || []).forEach((row) => {
+		if (!row.journal_entry && row.charge_currency === frm.doc.currency) {
+			frappe.model.set_value(row.doctype, row.name, "exchange_rate", frm.doc.exchange_rate || 1);
+		}
+	});
+}
+
+function set_charge_exchange_rate(frm, cdt, cdn) {
+	const row = (locals[cdt] || {})[cdn];
+	if (!row || !row.charge_currency) return;
+
+	if (row.charge_currency === frm.doc.currency) {
+		frappe.model.set_value(cdt, cdn, "exchange_rate", frm.doc.exchange_rate || 1);
+		return;
+	}
+
+	frappe.db.get_value("Company", frm.doc.company, "default_currency").then((r) => {
+		const company_currency = r.message && r.message.default_currency;
+		if (!company_currency) return;
+
+		if (row.charge_currency === company_currency) {
+			frappe.model.set_value(cdt, cdn, "exchange_rate", 1);
+			return;
+		}
+
+		frappe.call({
+			method: "erpnext.setup.utils.get_exchange_rate",
+			args: {
+				from_currency: row.charge_currency,
+				to_currency: company_currency,
+				transaction_date: row.charge_date || frm.doc.opening_date || frappe.datetime.get_today(),
+				args: "for_buying",
+			},
+			callback(res) {
+				if (res.message) {
+					frappe.model.set_value(cdt, cdn, "exchange_rate", res.message);
+				}
+			},
+		});
+	});
 }
 
 function update_all_charge_base_amounts(frm) {
