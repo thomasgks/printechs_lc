@@ -24,8 +24,12 @@ doctype_js = {
 	"Purchase Order": "public/js/purchase_order_lc.js",
 }
 
+
 doctype_tree_js = {
 	"Account": "public/js/account_tree_lc.js",
+}
+doctype_list_js = {
+	"Letter of Credit": "public/js/letter_of_credit_list.js",
 }
 
 doc_events = {
