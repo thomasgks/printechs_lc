@@ -56,7 +56,7 @@ CUSTOM_FIELDS = {
 			"fieldtype": "Select",
 			"insert_after": "letter_of_credit",
 			"label": "L/C Transaction Type",
-			"options": "\nMargin Block\nBank Charge\nSupplier Invoice\nBank Paid Supplier\nCompany Settlement\nMargin Release\nAmendment Charge\nOther",
+			"options": "\nMargin Block\nBank Charge\nSupplier Invoice\nSupplier Payment\nBank Paid Supplier\nCompany Settlement\nMargin Release\nAmendment Charge\nOther",
 		},
 	],
 	"Payment Entry": [
@@ -72,7 +72,7 @@ CUSTOM_FIELDS = {
 			"fieldtype": "Select",
 			"insert_after": "letter_of_credit",
 			"label": "L/C Settlement Type",
-			"options": "\nMargin Block\nBank Charge\nCompany Settlement\nMargin Release\nOther",
+			"options": "\nMargin Block\nBank Charge\nSupplier Payment\nBank Paid Supplier\nCompany Settlement\nMargin Release\nOther",
 		},
 	],
 	"Account": [

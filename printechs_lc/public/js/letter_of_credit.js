@@ -52,6 +52,7 @@ frappe.ui.form.on("Letter of Credit", {
 	},
 
 	refresh(frm) {
+		frm.clear_custom_buttons();
 		if (frm.is_new()) return;
 		add_accounting_buttons(frm);
 		frm.add_custom_button(__("L/C Ledger"), () => {
@@ -77,6 +78,16 @@ frappe.ui.form.on("Letter of Credit", {
 
 	margin_percent(frm) {
 		update_lc_amounts(frm);
+	},
+});
+
+frappe.ui.form.on("LC Shipment", {
+	shipped_amount(frm) {
+		update_shipment_utilization(frm);
+	},
+
+	shipments_remove(frm) {
+		update_shipment_utilization(frm);
 	},
 });
 
@@ -157,6 +168,17 @@ function set_lc_exchange_rate(frm, force = false) {
 			},
 		});
 	});
+}
+
+function update_shipment_utilization(frm) {
+	const shipment_utilized = Math.max(
+		0,
+		...(frm.doc.shipments || []).map((row) => flt(row.shipped_amount))
+	);
+	if (shipment_utilized > flt(frm.doc.utilized_amount)) {
+		frm.set_value("utilized_amount", shipment_utilized);
+	}
+	update_lc_amounts(frm);
 }
 
 function update_lc_amounts(frm) {
@@ -255,6 +277,10 @@ function add_accounting_buttons(frm) {
 	const group = __("Accounting");
 	const post = (label, method, default_amount, args = {}) => {
 		frm.add_custom_button(label, () => {
+			frm._lc_posting_in_progress = frm._lc_posting_in_progress || {};
+			const post_key = `${method}:${JSON.stringify(args)}`;
+			if (frm._lc_posting_in_progress[post_key]) return;
+
 			frappe.prompt(
 				[
 					{
@@ -266,23 +292,30 @@ function add_accounting_buttons(frm) {
 					},
 				],
 				(values) => {
+					frm._lc_posting_in_progress[post_key] = true;
+					frm.remove_custom_button(label, group);
 					frappe.call({
 						method,
 						args: { lc_name: frm.doc.name, amount: values.amount, ...args },
 						freeze: true,
 						callback(r) {
+							delete frm._lc_posting_in_progress[post_key];
 							if (r.message) {
 								frappe.show_alert({
-									message: __("Journal Entry {0} created", [r.message]),
+									message: __("Voucher {0} created", [r.message]),
 									indicator: "green",
 								});
 								frm.reload_doc();
 							}
 						},
+						error() {
+							delete frm._lc_posting_in_progress[post_key];
+							frm.reload_doc();
+						},
 					});
 				},
 				label,
-				__("Create Journal Entry")
+				__("Create Voucher")
 			);
 		}, group);
 	};
@@ -305,7 +338,7 @@ function add_accounting_buttons(frm) {
 		);
 	}
 
-	const unposted_charges = (frm.doc.charges || []).filter((row) => !row.journal_entry);
+	const unposted_charges = (frm.doc.charges || []).filter((row) => !row.journal_entry && !row.payment_entry);
 	if (unposted_charges.length) {
 		unposted_charges.forEach((row) => {
 			const base_amount = flt(row.base_amount) || flt(row.amount) * flt(row.exchange_rate || 1);
@@ -316,31 +349,44 @@ function add_accounting_buttons(frm) {
 				{ charge_row_idx: row.idx }
 			);
 		});
-	} else {
-		post(
-			__("Post Bank Charges"),
-			"printechs_lc.printechs_lc.doctype.letter_of_credit.letter_of_credit.make_bank_charges",
-			0
-		);
 	}
 
-	if (
-		frm.doc.bank_payment_confirmed &&
-		flt(frm.doc.utilized_amount) > 0 &&
-		flt(frm.doc.outstanding_liability) === 0
-	) {
+	const supplier_payment_total = get_linked_voucher_total(
+		frm,
+		["Supplier Payment", "Bank Paid Supplier"],
+		frm.doc.lc_liability_account,
+		"credit"
+	);
+	const company_settlement_total = get_linked_voucher_total(
+		frm,
+		["Company Settlement"],
+		frm.doc.lc_liability_account,
+		"debit"
+	);
+	const linked_outstanding = Math.max(supplier_payment_total - company_settlement_total, 0);
+	const current_outstanding = Math.max(flt(frm.doc.outstanding_liability), linked_outstanding);
+	const unposted_supplier_payment = flt(frm.doc.utilized_amount) - supplier_payment_total;
+
+	if (frm.doc.bank_payment_confirmed && unposted_supplier_payment > 0 && current_outstanding === 0) {
 		post(
-			__("Bank Paid Supplier"),
+			__("Supplier Payment"),
 			"printechs_lc.printechs_lc.doctype.letter_of_credit.letter_of_credit.make_bank_paid_supplier",
-			frm.doc.utilized_amount
+			unposted_supplier_payment
 		);
 	}
 
-	if (flt(frm.doc.outstanding_liability) > 0) {
+	if (current_outstanding > 0) {
 		post(
 			__("Settle with Bank"),
 			"printechs_lc.printechs_lc.doctype.letter_of_credit.letter_of_credit.make_company_settlement",
-			frm.doc.outstanding_liability
+			current_outstanding
 		);
 	}
+}
+
+function get_linked_voucher_total(frm, transaction_types, account, amount_field) {
+	return (frm.doc.voucher_links || [])
+		.filter((row) => transaction_types.includes(row.transaction_type))
+		.filter((row) => !account || row.account === account)
+		.reduce((total, row) => total + flt(row[amount_field]), 0);
 }

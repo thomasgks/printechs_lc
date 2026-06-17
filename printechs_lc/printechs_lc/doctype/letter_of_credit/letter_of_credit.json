@@ -165,12 +165,14 @@
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "base_lc_amount",
    "fieldtype": "Currency",
    "label": "Base L/C Amount",
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "utilized_amount",
    "fieldtype": "Currency",
    "label": "Utilized Amount",
@@ -178,12 +180,14 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "base_utilized_amount",
    "fieldtype": "Currency",
    "label": "Base Utilized Amount",
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "available_amount",
    "fieldtype": "Currency",
    "label": "Available Amount",
@@ -191,6 +195,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "base_available_amount",
    "fieldtype": "Currency",
    "label": "Base Available Amount",

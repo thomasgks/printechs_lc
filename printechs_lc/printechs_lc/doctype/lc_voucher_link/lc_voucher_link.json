@@ -27,7 +27,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Transaction Type",
-   "options": "\nMargin Block\nBank Charge\nSupplier Invoice\nBank Paid Supplier\nCompany Settlement\nMargin Release\nAmendment Charge\nOther",
+   "options": "\nMargin Block\nBank Charge\nSupplier Invoice\nSupplier Payment\nBank Paid Supplier\nCompany Settlement\nMargin Release\nAmendment Charge\nOther",
    "allow_on_submit": 1
   },
   {
